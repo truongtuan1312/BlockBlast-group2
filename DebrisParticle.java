@@ -7,11 +7,11 @@ public class DebrisParticle extends Particle {
     private final int size;
     private float rotation;
     private final float rotationSpeed;
-    private final GamePanel.LevelTheme theme;
+    private final LevelTheme theme;
     private float animationTime;
 
     public DebrisParticle(float x, float y, float vx, float vy, int size,
-                           Color color, GamePanel.LevelTheme theme,
+                           Color color, LevelTheme theme,
                            Random random, float animationTime) {
         super(x, y, vx, vy, color);
         this.size = size;
@@ -31,7 +31,7 @@ public class DebrisParticle extends Particle {
         y += vy;
         vy += theme.gravity;
         vx *= theme.friction;
-        if (theme == GamePanel.LevelTheme.CALM)
+        if (theme == LevelTheme.CALM)
             x += (float) Math.sin(animationTime + y * 0.04) * 0.35f;
         rotation += rotationSpeed;
         life -= theme.fadeSpeed;
@@ -47,10 +47,10 @@ public class DebrisParticle extends Particle {
 
         copy.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
 
-        if (theme == GamePanel.LevelTheme.CALM) {
+        if (theme == LevelTheme.CALM) {
             copy.setColor(new Color(230, 235, 245, alpha));
             copy.fillOval(-drawSize, -drawSize, drawSize * 2, drawSize * 2);
-        } else if (theme == GamePanel.LevelTheme.FIRESTORM || theme == GamePanel.LevelTheme.INFERNO) {
+        } else if (theme == LevelTheme.FIRESTORM || theme == LevelTheme.INFERNO) {
             Path2D shard = new Path2D.Double();
             shard.moveTo(0, -drawSize);
             shard.lineTo(drawSize, drawSize / 2.0);
