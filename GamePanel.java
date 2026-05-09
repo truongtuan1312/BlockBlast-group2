@@ -5,18 +5,55 @@ import java.awt.geom.*;
 import java.util.Random;
 
 public class GamePanel extends JPanel implements InputHandler.Callback {
-    private static final int PANEL_WIDTH = 720;
-    private static final int PANEL_HEIGHT = 840;
+    // --- Responsive layout: calculated from screen size at startup ---
+    private int PANEL_WIDTH;
+    private int PANEL_HEIGHT;
+    private int CELL_SIZE;
+    private int GAP;
+    private int BOARD_SIZE_PIXEL;
+    private int BOARD_X;
+    private int BOARD_Y;
+    private int PIECE_AREA_Y;
+    private int PIECE_CELL_SIZE;
+    private int DRAG_CELL_SIZE;
 
-    private static final int CELL_SIZE = 52;
-    private static final int GAP = 7;
-    private static final int BOARD_SIZE_PIXEL = Board.SIZE * CELL_SIZE;
-    private static final int BOARD_X = (PANEL_WIDTH - BOARD_SIZE_PIXEL) / 2;
-    private static final int BOARD_Y = 230;
+    private void recalcLayout() {
+    Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+    Insets si = Toolkit.getDefaultToolkit().getScreenInsets(
+        GraphicsEnvironment.getLocalGraphicsEnvironment()
+        .getDefaultScreenDevice().getDefaultConfiguration());
+    int availH = screen.height - si.top - si.bottom - 40;
+    int W = getWidth()  > 0 ? getWidth()  : (int)(availH * 0.68);
+    int H = getHeight() > 0 ? getHeight() : availH;
 
-    private static final int PIECE_AREA_Y = 720;
-    private static final int PIECE_CELL_SIZE = 27;
-    private static final int DRAG_CELL_SIZE = CELL_SIZE;
+    int headerH  = (int)(H * 0.30);
+    int dockH    = (int)(H * 0.13);
+    int boardAvH = H - headerH - dockH;
+    int boardAvW = W - 56;
+    int cellH    = boardAvH / Board.SIZE;
+    int cellW    = boardAvW / Board.SIZE;
+    CELL_SIZE        = Math.max(28, Math.min(cellH, cellW));
+    GAP              = Math.max(4, CELL_SIZE / 10);
+    BOARD_SIZE_PIXEL = Board.SIZE * CELL_SIZE;
+    PANEL_WIDTH      = W;
+    PANEL_HEIGHT     = H;
+    BOARD_X          = (W - BOARD_SIZE_PIXEL) / 2;
+    BOARD_Y          = headerH;
+    PIECE_AREA_Y     = BOARD_Y + BOARD_SIZE_PIXEL + 10;
+    PIECE_CELL_SIZE  = Math.max(16, CELL_SIZE / 2);
+    DRAG_CELL_SIZE   = CELL_SIZE;
+
+    int btnH = Math.max(32, (int)(BOARD_Y * 0.16));
+    int btnX  = BOARD_X + BOARD_SIZE_PIXEL - 218; // căn phải theo cạnh phải board
+    int btnY  = (int)(BOARD_Y * 0.04);
+    menuButton.setBounds(btnX,        btnY, 70, btnH);
+    undoButton.setBounds(btnX + 78,   btnY, 70, btnH);
+    muteButton.setBounds(btnX + 158,  btnY, 48, btnH);
+    int mpY = menuButton.y + menuButton.height + 4;
+    menuPanel.setBounds(menuButton.x - 10,  mpY, 200, 140);
+    menuNewGameButton.setBounds(menuButton.x + 5, mpY + 30, 170, 38);
+    menuExitButton.setBounds(menuButton.x + 5, mpY + 80, 170, 38);
+}
 
     private final Board board;
     private Piece[] pieces;
@@ -33,14 +70,16 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
 
     private final GameState state = new GameState();
     private InputHandler inputHandler;
+    private final SoundManager sound = SoundManager.getInstance();
 
-    private final Rectangle menuButton = new Rectangle(486, 66, 68, 56);
-    private final Rectangle undoButton = new Rectangle(602, 66, 68, 56);
-    private final Rectangle menuPanel = new Rectangle(480, 142, 190, 136);
-    private final Rectangle menuNewGameButton = new Rectangle(510, 167, 130, 38);
-    private final Rectangle menuExitButton = new Rectangle(510, 220, 130, 38);
-    private final Rectangle gameOverNewGameButton = new Rectangle(205, 500, 140, 46);
-    private final Rectangle gameOverExitButton = new Rectangle(375, 500, 140, 46);
+    private static final Rectangle menuButton            = new Rectangle(0,0,70,30);
+    private static final Rectangle undoButton            = new Rectangle(0,0,70,30);
+    private static final Rectangle menuPanel             = new Rectangle(0,0,200,140);
+    private static final Rectangle menuNewGameButton     = new Rectangle(0,0,170, 38);
+    private static final Rectangle menuExitButton        = new Rectangle(0,0, 170, 38);
+    private static final Rectangle gameOverNewGameButton = new Rectangle(0,0, 140, 46);
+    private static final Rectangle gameOverExitButton    = new Rectangle(0,0, 140, 46);
+    private static final Rectangle muteButton            = new Rectangle(0,0,48,30);
 
     private final Random random = new Random();
     private final GameObjectPool<AtmosphereParticle> atmosphereParticles = new GameObjectPool<AtmosphereParticle>();
@@ -67,9 +106,10 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
 
         inputHandler = new InputHandler(this, state,
             menuButton, undoButton, menuPanel, menuNewGameButton, menuExitButton,
-            gameOverNewGameButton, gameOverExitButton, pieceBounds, PANEL_HEIGHT);
+            gameOverNewGameButton, gameOverExitButton, pieceBounds, PANEL_HEIGHT, muteButton);
         addMouseListener(inputHandler);
         addMouseMotionListener(inputHandler);
+        recalcLayout();   
         rebuildAtmosphere();
 
         animationTimer = new Timer(16, e -> {
@@ -82,6 +122,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
             LevelTheme targetTheme = state.getThemeForScore(state.getScore());
             if (targetTheme != state.getCurrentTheme()) {
                 state.setCurrentTheme(targetTheme);
+                sound.play(SoundManager.SoundType.LEVEL_UP);
                 rebuildAtmosphere();
             }
 
@@ -100,7 +141,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     private void setupFonts() {
-        titleFont = new Font("Cooper Black", Font.BOLD, 44);
+        titleFont = new Font("Cooper Black", Font.BOLD, (int)(CELL_SIZE * 0.78));
         gameFont = new Font("Segoe UI Black", Font.BOLD, 18);
         normalFont = new Font("Segoe UI", Font.PLAIN, 14);
 
@@ -127,10 +168,10 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     private int getNextLevelScore() {
-        if (state.getScore() < 800) return 800;
-        if (state.getScore() < 1800) return 1800;
-        if (state.getScore() < 3200) return 3200;
-        if (state.getScore() < 5200) return 5200;
+        if (state.getScore() < 300) return 300;
+        if (state.getScore() < 700) return 700;
+        if (state.getScore() < 1300) return 1300;
+        if (state.getScore() < 5200) return 2200;
         return -1;
     }
 
@@ -139,10 +180,10 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
         if (next == -1) return 1.0;
 
         int previous;
-        if (next == 800) previous = 0;
-        else if (next == 1800) previous = 800;
-        else if (next == 3200) previous = 1800;
-        else previous = 3200;
+        if (next == 300) previous = 0;
+        else if (next == 700) previous = 300;
+        else if (next == 1300) previous = 700;
+        else previous = 1300;
 
         return Math.max(0, Math.min(1, (state.getScore() - previous) / (double) (next - previous)));
     }
@@ -155,6 +196,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     private void restartGame() {
+        sound.play(SoundManager.SoundType.NEW_GAME);
         board.reset();
         pieces = PieceFactory.createThreePieces();
         state.reset();
@@ -182,6 +224,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
 
     private void undoLastMove() {
         if (!state.canUndo()) return;
+        sound.play(SoundManager.SoundType.UNDO);
         GameStateMemento mem = state.restoreUndo();
         board.restoreCells(mem.getBoardSnapshot());
         pieces = mem.getPiecesSnapshot();
@@ -198,6 +241,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     private void startGameOver() {
+        sound.play(SoundManager.SoundType.GAME_OVER);
         state.setGameOver(true);
         dragging = false;
         selectedPieceIndex = -1;
@@ -243,6 +287,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
 
             board.placePiece(selectedPiece, hoverRow, hoverCol);
             state.addScore(moveScore);
+            sound.play(SoundManager.SoundType.PLACE);
 
             boolean[][] marked = board.getFullLineCells();
             int clearedLines = board.countFullLines();
@@ -257,6 +302,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
                 state.addScore(lineBonus + comboBonus);
 
                 state.setComboPulse(32 + clearedLines * 8);
+                sound.play(clearedLines >= 2 ? SoundManager.SoundType.COMBO : SoundManager.SoundType.CLEAR_LINE);
                 showMoveFeedback("PERFECT", feedbackX, feedbackY, moveScore, clearedLines);
             } else if (moveScore >= 50) {
                 showMoveFeedback("EXCELLENT", feedbackX, feedbackY, moveScore, 0);
@@ -345,6 +391,8 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
 
     @Override
     protected void paintComponent(Graphics g) {
+        recalcLayout();
+        setupFonts();
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         enableSmoothGraphics(g2);
@@ -376,6 +424,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     private void drawBackground(Graphics2D g2) {
+        // Bản này không dùng 4 ảnh nền trong assets nữa.
         // Toàn bộ background được vẽ trực tiếp bằng Java2D nhưng vẫn giữ cơ chế
         // chuyển cấp giao diện, particle, fire/neon/sakura/leaf overlay như file cuối cùng.
         drawFallbackGradient(g2);
@@ -634,6 +683,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     private void drawMenuAndUndoButtons(Graphics2D g2) {
         drawIconButton(g2, menuButton, "menu", true);
         drawIconButton(g2, undoButton, "undo", state.canUndo());
+        drawMuteButton(g2);
     }
 
     private void drawIconButton(Graphics2D g2, Rectangle rect, String type, boolean enabled) {
@@ -722,6 +772,57 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
         copy.dispose();
     }
 
+    private void drawMuteButton(Graphics2D g2) {
+        Rectangle r = muteButton;
+        boolean muted = sound.isMuted();
+
+        // Shadow
+        g2.setColor(new Color(0, 0, 0, 80));
+        g2.fillRoundRect(r.x + 3, r.y + 4, r.width, r.height, 14, 14);
+
+        // Background
+        GradientPaint bg = muted
+            ? new GradientPaint(r.x, r.y, new Color(80, 30, 30), r.x, r.y + r.height, new Color(50, 15, 15))
+            : new GradientPaint(r.x, r.y, state.getCurrentTheme().buttonA, r.x, r.y + r.height, state.getCurrentTheme().buttonB);
+        g2.setPaint(bg);
+        g2.fillRoundRect(r.x, r.y, r.width, r.height, 14, 14);
+
+        // Border
+        g2.setColor(muted ? new Color(180, 60, 60, 180) : state.getCurrentTheme().cardBorder);
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRoundRect(r.x, r.y, r.width, r.height, 14, 14);
+        g2.setStroke(new BasicStroke(1f));
+
+        // Icon - speaker shape
+        int cx = r.x + r.width / 2;
+        int cy = r.y + r.height / 2;
+        int sz = r.height / 4;
+        g2.setColor(muted ? new Color(255, 100, 100) : Color.WHITE);
+        g2.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+        // Speaker body
+        int[] spkX = {cx - sz, cx - sz/2, cx + sz/3, cx + sz/3};
+        int[] spkY = {cy - sz/3, cy - sz/3, cy - sz*2/3, cy + sz*2/3};
+        int[] spkX2 = {cx + sz/3, cx - sz/2, cx - sz, cx - sz};
+        int[] spkY2 = {cy + sz*2/3, cy + sz/3, cy + sz/3, cy - sz/3};
+        int[] polyX = {cx - sz, cx - sz/2, cx + sz/3, cx + sz/3, cx - sz/2, cx - sz};
+        int[] polyY = {cy - sz/3, cy - sz/3, cy - sz*2/3, cy + sz*2/3, cy + sz/3, cy + sz/3};
+        g2.fillPolygon(polyX, polyY, polyX.length);
+
+        if (!muted) {
+            // Sound waves
+            g2.setColor(new Color(255, 255, 255, 180));
+            g2.drawArc(cx + sz/3, cy - sz, sz, sz*2, -30, 60);
+            g2.drawArc(cx + sz/3 + 4, cy - sz - 4, sz + 8, sz*2 + 8, -40, 80);
+        } else {
+            // X mark
+            g2.setColor(new Color(255, 80, 80));
+            g2.drawLine(cx + sz/3 + 2, cy - sz/2, cx + sz + 2, cy + sz/2);
+            g2.drawLine(cx + sz/3 + 2, cy + sz/2, cx + sz + 2, cy - sz/2);
+        }
+        g2.setStroke(new BasicStroke(1f));
+    }
+
     private void drawInGameMenu(Graphics2D g2) {
         g2.setColor(new Color(0, 0, 0, 120));
         g2.fillRoundRect(menuPanel.x + 8, menuPanel.y + 10, menuPanel.width, menuPanel.height, 28, 28);
@@ -758,40 +859,48 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     private void drawHeader(Graphics2D g2) {
+       int cardW = (int)(BOARD_SIZE_PIXEL * 0.29);
+       int titleY    = (int)(BOARD_Y * 0.48);
+       int subtitleY = (int)(BOARD_Y * 0.58);
+       int cardY     = (int)(BOARD_Y * 0.62);
+       int cardH     = Math.min(60, BOARD_Y - cardY - 30);
         g2.setFont(titleFont);
         g2.setColor(new Color(0, 0, 0, 125));
-        g2.drawString("BLOCK BLAST", 54, 70);
-
-        GradientPaint titleGradient = new GradientPaint(52, 25, state.getCurrentTheme().titleA, 355, 85, state.getCurrentTheme().titleB);
+        g2.drawString("BLOCK BLAST", BOARD_X + 4, titleY + 4);
+        GradientPaint titleGradient = new GradientPaint(BOARD_X, titleY - 30,
+            state.getCurrentTheme().titleA, BOARD_X + 300, titleY + 10, state.getCurrentTheme().titleB);
         g2.setPaint(titleGradient);
-        g2.drawString("BLOCK BLAST", 50, 66);
+        g2.drawString("BLOCK BLAST", BOARD_X, titleY);
 
-        g2.setFont(normalFont.deriveFont(Font.BOLD, 15f));
+        g2.setFont(normalFont.deriveFont(Font.BOLD, (float)(CELL_SIZE * 0.27)));
         g2.setColor(state.getCurrentTheme().subText);
-        g2.drawString(getLevelName(), 58, 96);
+        g2.drawString(getLevelName(), BOARD_X + 2, subtitleY);
 
-        drawScoreCard(g2, 58, 110, 155, 48, "SCORE", String.valueOf(state.getScore()), state.getCurrentTheme().scoreAccent);
-        drawScoreCard(g2, 230, 110, 145, 48, "BEST", String.valueOf(state.getBestScore()), state.getCurrentTheme().bestAccent);
+        int card2X = BOARD_X + cardW + 16;
+        drawScoreCard(g2, BOARD_X, cardY, cardW, cardH, "SCORE",
+            String.valueOf(state.getScore()), state.getCurrentTheme().scoreAccent);
+        drawScoreCard(g2, card2X, cardY, cardW, cardH, "BEST",
+            String.valueOf(state.getBestScore()), state.getCurrentTheme().bestAccent);
     }
 
     private void drawScoreCard(Graphics2D g2, int x, int y, int w, int h, String label, String value, Color accent) {
         g2.setColor(new Color(0, 0, 0, state.getCurrentTheme().shadowAlpha));
-        g2.fillRoundRect(x + 5, y + 6, w, h, 22, 22);
-
+        g2.fillRoundRect(x + 4, y + 5, w, h, 18, 18);
         GradientPaint card = new GradientPaint(x, y, state.getCurrentTheme().cardTop, x, y + h, state.getCurrentTheme().cardBottom);
         g2.setPaint(card);
-        g2.fillRoundRect(x, y, w, h, 22, 22);
-
+        g2.fillRoundRect(x, y, w, h, 18, 18);
         g2.setColor(state.getCurrentTheme().cardBorder);
-        g2.drawRoundRect(x, y, w, h, 22, 22);
+        g2.drawRoundRect(x, y, w, h, 18, 18);
 
-        g2.setFont(gameFont.deriveFont(Font.BOLD, 12f));
+        float labelSz = Math.max(10f, h * 0.28f);
+        float valueSz = Math.max(14f, h * 0.52f);
+        g2.setFont(gameFont.deriveFont(Font.BOLD, labelSz));
         g2.setColor(state.getCurrentTheme().cardLabel);
-        g2.drawString(label, x + 18, y + 19);
-
-        g2.setFont(gameFont.deriveFont(Font.BOLD, 22f));
+        g2.drawString(label, x + 14, y + (int)(h * 0.38));
+        g2.setFont(gameFont.deriveFont(Font.BOLD, valueSz));
         g2.setColor(accent);
-        g2.drawString(value, x + 70, y + 37);
+        FontMetrics fm = g2.getFontMetrics();
+        g2.drawString(value, x + (w - fm.stringWidth(value)) / 2, y + (int)(h * 0.82));
     }
 
     private void drawSmallButton(Graphics2D g2, Rectangle rect, String text) {
@@ -814,10 +923,10 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     private void drawLevelBar(Graphics2D g2) {
-        int x = 398;
-        int y = 148;
-        int w = 270;
-        int h = 18;
+        int x = menuButton.x;
+        int y = menuButton.y + menuButton.height + 6;
+        int w = muteButton.x + muteButton.width - menuButton.x;
+        int h = Math.max(10, (int)(BOARD_Y * 0.06));
         double progress = getProgressToNextLevel();
 
         g2.setColor(new Color(0, 0, 0, state.getCurrentTheme().shadowAlpha));
@@ -837,7 +946,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
         String text = getNextLevelScore() == -1 ? "MAX LEVEL" : "NEXT: " + getNextLevelScore();
         FontMetrics fm = g2.getFontMetrics();
         g2.setColor(state.getCurrentTheme().mainText);
-        g2.drawString(text, x + (w - fm.stringWidth(text)) / 2, y - 5);
+        g2.drawString(text, x + w + 28, y + h / 2 + fm.getAscent() / 2);
     }
 
     private void drawBoardShell(Graphics2D g2) {
@@ -924,26 +1033,33 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     private void drawPieceDock(Graphics2D g2) {
-        g2.setColor(state.getCurrentTheme().mainText);
-        g2.setFont(gameFont.deriveFont(Font.BOLD, 20f));
-        g2.drawString("Drag blocks to board", 55, 690);
+        int dockY     = PIECE_AREA_Y;
+        int slotW     = (PANEL_WIDTH - 80) / 3;
+        int slotH     = PANEL_HEIGHT - dockY - 16;
+        slotH         = Math.max(70, Math.min(slotH, (int)(CELL_SIZE * 2.2)));
+        int labelY    = dockY - (int)(slotH * 0.18);
+        int hintY     = dockY - (int)(slotH * 0.04);
 
-        g2.setFont(normalFont.deriveFont(Font.PLAIN, 13f));
+        g2.setColor(state.getCurrentTheme().mainText);
+        g2.setFont(gameFont.deriveFont(Font.BOLD, (float)(CELL_SIZE * 0.36)));
+        g2.drawString("Drag blocks to board", BOARD_X, labelY);
+        g2.setFont(normalFont.deriveFont(Font.PLAIN, (float)(CELL_SIZE * 0.24)));
         g2.setColor(state.getCurrentTheme().subText);
-        g2.drawString(state.getCurrentTheme().dockHint, 55, 710);
+        g2.drawString(state.getCurrentTheme().dockHint, BOARD_X, hintY);
 
         for (int i = 0; i < pieces.length; i++) {
-            int areaX = 58 + i * 210;
-            int areaY = PIECE_AREA_Y;
-            pieceBounds[i] = new Rectangle(areaX, areaY, 175, 85);
-            drawDockSlot(g2, areaX, areaY, 175, 85, i == selectedPieceIndex && dragging);
-
+            int areaX = 40 + i * slotW;
+            int areaY = dockY;
+            pieceBounds[i] = new Rectangle(areaX, areaY, slotW - 6, slotH);
+            drawDockSlot(g2, areaX, areaY, slotW - 6, slotH, i == selectedPieceIndex && dragging);
             if (pieces[i] != null) {
-                if (!(i == selectedPieceIndex && dragging)) drawPieceCentered(g2, pieces[i], areaX, areaY, 175, 85, PIECE_CELL_SIZE);
+                if (!(i == selectedPieceIndex && dragging))
+                    drawPieceCentered(g2, pieces[i], areaX, areaY, slotW - 6, slotH, PIECE_CELL_SIZE);
             } else {
                 g2.setColor(state.getCurrentTheme().usedText);
-                g2.setFont(gameFont.deriveFont(Font.BOLD, 18f));
-                g2.drawString("USED", areaX + 61, areaY + 51);
+                g2.setFont(gameFont.deriveFont(Font.BOLD, (float)(CELL_SIZE * 0.35)));
+                FontMetrics fm = g2.getFontMetrics();
+                g2.drawString("USED", areaX + (slotW - 6 - fm.stringWidth("USED")) / 2, areaY + slotH / 2 + 7);
             }
         }
     }
@@ -1049,7 +1165,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     private void drawInstruction(Graphics2D g2) {
-        g2.setFont(normalFont.deriveFont(Font.PLAIN, 13f));
+        g2.setFont(normalFont.deriveFont(Font.PLAIN, (float)(CELL_SIZE * 0.25)));
         g2.setColor(state.getCurrentTheme().subText);
         g2.drawString("The higher your state.getScore(), the stronger the world becomes.", 182, 830);
     }
@@ -1149,7 +1265,8 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
         dragging = true;
         dragMouseX = mouseX;
         dragMouseY = mouseY;
-        int areaX = 58 + index * 210;
+        int pw2 = (PANEL_WIDTH - 80) / 3;
+        int areaX = 40 + index * pw2;
         int pieceW = pieces[index].getWidth() * PIECE_CELL_SIZE;
         int pieceH = pieces[index].getHeight() * PIECE_CELL_SIZE;
         dragOffsetX = mouseX - (areaX + (175 - pieceW) / 2);
@@ -1168,6 +1285,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
         updateHoverPosition(); placeDraggedPiece(); dragging = false;
     }
     @Override public void onMenuToggle()  { state.setMenuOpen(!state.isMenuOpen()); repaint(); }
+    @Override public void onMuteToggle()   { sound.toggleMute(); repaint(); }
     @Override public void onUndo()        { undoLastMove(); }
     @Override public void onNewGame()     { restartGame(); }
     @Override public void onExit()        { exitGame(); }

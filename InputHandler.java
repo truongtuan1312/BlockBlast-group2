@@ -17,6 +17,7 @@ public class InputHandler implements MouseListener, MouseMotionListener {
         void onExit();
         void onMenuClose();
         void onHoverExit();
+        void onMuteToggle();
     }
 
     private final Callback cb;
@@ -28,6 +29,7 @@ public class InputHandler implements MouseListener, MouseMotionListener {
     private final Rectangle gameOverNewGameButton;
     private final Rectangle gameOverExitButton;
     private final Rectangle[] pieceBounds;
+    private final Rectangle muteButton;
 
     private boolean dragging = false;
     private final GameState state;
@@ -37,7 +39,7 @@ public class InputHandler implements MouseListener, MouseMotionListener {
                         Rectangle menuButton, Rectangle undoButton,
                         Rectangle menuPanel, Rectangle menuNewGameButton, Rectangle menuExitButton,
                         Rectangle gameOverNewGameButton, Rectangle gameOverExitButton,
-                        Rectangle[] pieceBounds, int panelHeight) {
+                        Rectangle[] pieceBounds, int panelHeight, Rectangle muteButton) {
         this.cb = cb;
         this.state = state;
         this.menuButton = menuButton;
@@ -49,6 +51,7 @@ public class InputHandler implements MouseListener, MouseMotionListener {
         this.gameOverExitButton = gameOverExitButton;
         this.pieceBounds = pieceBounds;
         this.panelHeight = panelHeight;
+        this.muteButton = muteButton;
     }
 
     public boolean isDragging() { return dragging; }
@@ -77,6 +80,7 @@ public class InputHandler implements MouseListener, MouseMotionListener {
 
         if (menuButton.contains(e.getPoint())) { cb.onMenuToggle(); return; }
         if (undoButton.contains(e.getPoint())) { cb.onUndo();       return; }
+        if (muteButton != null && muteButton.contains(e.getPoint())) { cb.onMuteToggle(); return; }
 
         for (int i = 0; i < pieceBounds.length; i++) {
             if (pieceBounds[i] != null && pieceBounds[i].contains(e.getPoint())) {

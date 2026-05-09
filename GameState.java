@@ -55,16 +55,16 @@ public class GameState {
     }
 
     public LevelTheme getThemeForScore(int value) {
-        if (value >= 5200) return LevelTheme.INFERNO;
-        if (value >= 3200) return LevelTheme.FIRESTORM;
-        if (value >= 1800) return LevelTheme.NEON_RUSH;
-        if (value >= 800)  return LevelTheme.GOLDEN_FLOW;
+        if (value >= 2200) return LevelTheme.INFERNO;
+        if (value >= 1300) return LevelTheme.FIRESTORM;
+        if (value >= 700) return LevelTheme.NEON_RUSH;
+        if (value >= 300)  return LevelTheme.GOLDEN_FLOW;
         return LevelTheme.CALM;
     }
 
     public int getNextLevelScore() {
-        if (score < 800)  return 800;
-        if (score < 1800) return 1800;
+        if (score < 300)  return 300;
+        if (score < 700) return 700;
         if (score < 3200) return 3200;
         if (score < 5200) return 5200;
         return -1;
@@ -73,7 +73,7 @@ public class GameState {
     public double getProgressToNextLevel() {
         int next = getNextLevelScore();
         if (next == -1) return 1.0;
-        int prev = next == 800 ? 0 : next == 1800 ? 300 : next == 3200 ? 1800 : 3200;
+        int prev = next == 800 ? 0 : next == 1800 ? 800 : next == 3200 ? 1800 : 3200;
         return Math.max(0, Math.min(1, (score - prev) / (double)(next - prev)));
     }
 
