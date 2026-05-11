@@ -17,6 +17,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     private int PIECE_CELL_SIZE;
     private int DRAG_CELL_SIZE;
 
+    //Section 1: LAYOUT
     private void recalcLayout() {
     Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
     Insets si = Toolkit.getDefaultToolkit().getScreenInsets(
@@ -27,7 +28,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     int H = getHeight() > 0 ? getHeight() : availH;
 
     int headerH  = (int)(H * 0.30);
-    int dockH    = (int)(H * 0.13);
+    int dockH    = (int)(H * 0.14);
     int boardAvH = H - headerH - dockH;
     int boardAvW = W - 56;
     int cellH    = boardAvH / Board.SIZE;
@@ -39,7 +40,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     PANEL_HEIGHT     = H;
     BOARD_X          = (W - BOARD_SIZE_PIXEL) / 2;
     BOARD_Y          = headerH;
-    PIECE_AREA_Y     = BOARD_Y + BOARD_SIZE_PIXEL + 10;
+    PIECE_AREA_Y     = BOARD_Y + BOARD_SIZE_PIXEL + 40;
     PIECE_CELL_SIZE  = Math.max(16, CELL_SIZE / 2);
     DRAG_CELL_SIZE   = CELL_SIZE;
 
@@ -67,8 +68,8 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     private int dragOffsetY = 0;
     private int hoverRow = -1;
     private int hoverCol = -1;
-
     private final GameState state = new GameState();
+
     private InputHandler inputHandler;
     private final SoundManager sound = SoundManager.getInstance();
 
@@ -270,6 +271,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
         hoverRow = Math.round((pieceDrawY - BOARD_Y) / (float) CELL_SIZE);
     }
 
+    //Section 2: Game Logic
     private void placeDraggedPiece() {
         if (selectedPieceIndex == -1 || pieces[selectedPieceIndex] == null) {
             resetDragState();
@@ -285,7 +287,12 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
             int feedbackX = BOARD_X + hoverCol * CELL_SIZE + selectedPiece.getWidth() * CELL_SIZE / 2;
             int feedbackY = BOARD_Y + hoverRow * CELL_SIZE + selectedPiece.getHeight() * CELL_SIZE / 2;
 
-            board.placePiece(selectedPiece, hoverRow, hoverCol);
+            try {
+                board.placePiece(selectedPiece, hoverRow, hoverCol);
+            } catch (InvalidPlacementException e) {
+                resetDragState();
+                return;
+}
             state.addScore(moveScore);
             sound.play(SoundManager.SoundType.PLACE);
 
@@ -390,6 +397,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     }
 
     @Override
+    //Section 3: Rendering
     protected void paintComponent(Graphics g) {
         recalcLayout();
         setupFonts();
@@ -397,7 +405,7 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
         Graphics2D g2 = (Graphics2D) g;
         enableSmoothGraphics(g2);
 
-        drawBackground(g2);
+        drawBackground(g2); //Drawing methods
         drawDynamicOverlay(g2);
         drawAtmosphereParticles(g2);
         drawHeader(g2);
@@ -1036,17 +1044,17 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
         int dockY     = PIECE_AREA_Y;
         int slotW     = (PANEL_WIDTH - 80) / 3;
         int slotH     = PANEL_HEIGHT - dockY - 16;
-        slotH         = Math.max(70, Math.min(slotH, (int)(CELL_SIZE * 2.2)));
-        int labelY    = dockY - (int)(slotH * 0.18);
-        int hintY     = dockY - (int)(slotH * 0.04);
+        slotH         = Math.max(50, Math.min(slotH, (int)(CELL_SIZE * 1.6)));
+        int textX = BOARD_X + BOARD_SIZE_PIXEL + 35;
+        int labelY    = dockY - (int)(CELL_SIZE * 1.1);
+        int hintY     = dockY - (int)(CELL_SIZE * 0.55);
 
-        g2.setColor(state.getCurrentTheme().mainText);
-        g2.setFont(gameFont.deriveFont(Font.BOLD, (float)(CELL_SIZE * 0.36)));
-        g2.drawString("Drag blocks to board", BOARD_X, labelY);
-        g2.setFont(normalFont.deriveFont(Font.PLAIN, (float)(CELL_SIZE * 0.24)));
-        g2.setColor(state.getCurrentTheme().subText);
-        g2.drawString(state.getCurrentTheme().dockHint, BOARD_X, hintY);
-
+    g2.setColor(state.getCurrentTheme().mainText);
+    g2.setFont(gameFont.deriveFont(Font.BOLD, (float)(CELL_SIZE * 0.36)));
+    g2.drawString("Drag blocks to board", textX, labelY);
+    g2.setFont(normalFont.deriveFont(Font.PLAIN, (float)(CELL_SIZE * 0.24)));
+    g2.setColor(state.getCurrentTheme().subText);
+    g2.drawString(state.getCurrentTheme().dockHint, textX, hintY);
         for (int i = 0; i < pieces.length; i++) {
             int areaX = 40 + i * slotW;
             int areaY = dockY;
@@ -1167,7 +1175,6 @@ public class GamePanel extends JPanel implements InputHandler.Callback {
     private void drawInstruction(Graphics2D g2) {
         g2.setFont(normalFont.deriveFont(Font.PLAIN, (float)(CELL_SIZE * 0.25)));
         g2.setColor(state.getCurrentTheme().subText);
-        g2.drawString("The higher your state.getScore(), the stronger the world becomes.", 182, 830);
     }
 
     private void drawGameOver(Graphics2D g2) {

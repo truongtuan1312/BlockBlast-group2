@@ -11,10 +11,15 @@ public class GameState {
     private int comboPulse = 0;
     private LevelTheme currentTheme = LevelTheme.CALM;
 
-    private final UndoManager undoManager = new UndoManager();
-    private final ScoreStrategy scoreStrategy = new ClassicScoreStrategy();
-
-    public void reset() {
+     private final UndoManager undoManager = new UndoManager();
+     private final ScoreStrategy scoreStrategy;
+     public GameState(){
+        this.scoreStrategy = new ClassicScoreStrategy();
+     }
+     public GameState(ScoreStrategy strategy){
+        this.scoreStrategy = strategy;
+     }
+     public void reset() {
         score = 0;
         gameOver = false;
         menuOpen = false;

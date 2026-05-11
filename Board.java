@@ -39,9 +39,9 @@ public class Board {
         return true;
     }
 
-    public void placePiece(Piece piece, int startRow, int startCol) {
-        if (!canPlace(piece, startRow, startCol)) return;
-
+    public void placePiece(Piece piece, int startRow, int startCol) throws InvalidPlacementException {
+    if (!canPlace(piece, startRow, startCol))
+        throw new InvalidPlacementException(startRow, startCol);
         boolean[][] shape = piece.getShape();
 
         for (int r = 0; r < piece.getHeight(); r++) {

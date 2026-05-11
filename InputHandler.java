@@ -18,7 +18,7 @@ public class InputHandler implements MouseListener, MouseMotionListener {
         void onMenuClose();
         void onHoverExit();
         void onMuteToggle();
-    }
+       }
 
     private final Callback cb;
     private final Rectangle menuButton;

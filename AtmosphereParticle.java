@@ -2,7 +2,11 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.geom.Path2D;
 import java.util.Random;
-
+/**
+ * Abstract base-subclasses must honour the Particle contract:
+ * update() moves the particle, isDead() returns true when life <= 0.
+ * LSP-Liskov Substitution Principle.
+ */
 public class AtmosphereParticle extends Particle {
     private int size;
     private float rotation;

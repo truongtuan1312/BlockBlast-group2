@@ -1,5 +1,7 @@
 import java.awt.Color;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 public class PieceFactory {
     private static final Random random = new Random();
@@ -99,13 +101,19 @@ public class PieceFactory {
     }
 
     public static Piece[] createThreePieces() {
-        Piece[] pieces = new Piece[3];
-
-        for (int i = 0; i < pieces.length; i++) {
-            pieces[i] = createRandomPiece();
-        }
-
-        return pieces;
+    Piece[] pieces = new Piece[3];
+    Set<Integer> usedShapes = new HashSet<>();   
+    for (int i = 0; i < pieces.length; i++) {
+        int shapeIndex;
+        do {
+            shapeIndex = random.nextInt(SHAPES.length);
+        } while (usedShapes.contains(shapeIndex));
+        usedShapes.add(shapeIndex);
+        boolean[][] copy = copyShape(SHAPES[shapeIndex]);
+        Color color = COLORS[random.nextInt(COLORS.length)];
+        pieces[i] = new Piece(copy, color);
+    }
+    return pieces;
     }
 
     private static boolean[][] copyShape(boolean[][] original) {
